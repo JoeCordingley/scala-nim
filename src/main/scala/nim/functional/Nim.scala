@@ -40,16 +40,6 @@ object Nim {
   }
   type Status = Int
 
-  def parseInt(s: String): Option[Int] = Try(s.toInt).toOption
-  def parseInput(s: String, max: Int): Option[Move] =
-    parseInt(s).filter(i => i <= max && i >= 1)
-  def parseStart(s: String): Option[Int] = parseInt(s).filter(i => i >= 1)
-
-  def retry[F[_]: Monad, A](fa: F[Option[A]]): F[A] = fa.flatMap {
-    case None    => retry(fa)
-    case Some(a) => Monad[F].pure(a)
-  }
-
   type GetMoveWithStatus[F[_]] = (Player, Max, Status) => F[Move]
 
   def playWithUpdates[F[_]: Monad](
@@ -59,6 +49,11 @@ object Nim {
     val getMove = (player: Player, max: Max) =>
       getMoveAndUpdate(state => getMoveWithStatus(player, max, state))
     play[StateT[F, Int, ?]](getMove, stones).runA(stones)
+  }
+
+  def retry[F[_]: Monad, A](fa: F[Option[A]]): F[A] = fa.flatMap {
+    case None    => retry(fa)
+    case Some(a) => Monad[F].pure(a)
   }
 
   def retryWithError[F[_]: Monad, A](
@@ -71,18 +66,27 @@ object Nim {
     retry[FState, A](tryAndThenSetError).runA(normal)
   }
 
+  def parseInt(s: String): Option[Int] = Try(s.toInt).toOption
+  def parseInput(s: String, max: Int): Option[Move] =
+    parseInt(s).filter(i => i <= max && i >= 1)
+  def parseStart(s: String): Option[Int] = parseInt(s).filter(i => i >= 1)
+
+  def print(s: String): IO[Unit] = IO(println(s))
+  val read: IO[String] = IO(readLine)
+
   val startString = "how many stones do you wish to play with?"
   val errorString = "invalid input"
   def turnString(player: Player, max: Int, status: Int) =
     s"${playerString(player)}, there are $status stones left, you may take a maximum of $max stones, how many do you take?"
+
   def retryWithErrorIO[A](f: IO[Option[A]]): IO[A] =
     retryWithError(f, print(errorString) *> f)
-  def print(s: String): IO[Unit] = IO(println(s))
-  val read: IO[String] = IO(readLine)
 
-  val getStartingStones: IO[Int] = retryWithErrorIO {
-    print(startString) *> read.map(parseStart)
-  }
+  val getStartingStones: IO[Int] = retryWithError(
+    print(startString) *> read.map(parseStart),
+    print(errorString) *> read.map(parseStart)
+  )
+
   def winnerString(winner: Winner) = s"${playerString(winner)} wins!"
 
   val playerString: Player => String = {
@@ -90,9 +94,10 @@ object Nim {
     case PlayerTwo => "Player two"
   }
   val getTurn: GetMoveWithStatus[IO] = (player, max, status) =>
-    retryWithErrorIO {
-      print(turnString(player, max, status)) *> read.map(parseInput(_, max))
-    }
+    retryWithError(
+      print(turnString(player, max, status)) *> read.map(parseInput(_, max)),
+      print(errorString) *> read.map(parseInput(_, max))
+    )
   def announceWinner(winner: Winner): IO[Unit] = print(winnerString(winner))
 
   def playIO(stones: Int): IO[Winner] = playWithUpdates(getTurn, stones)

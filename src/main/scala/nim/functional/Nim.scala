@@ -35,7 +35,7 @@ object Nim {
 
   def getMoveAndUpdate[F[_]: Monad](
       f: Status => F[Move]
-  ): StateT[F, Int, Move] = StateT[F, Int, Move] { state =>
+  ): StateT[F, Int, Move] = StateT { state =>
     f(state).map(move => (state - move, move))
   }
   type Status = Int
@@ -53,11 +53,11 @@ object Nim {
   type GetMoveWithStatus[F[_]] = (Player, Max, Status) => F[Move]
 
   def playWithUpdates[F[_]: Monad](
-      update: GetMoveWithStatus[F],
+      getMoveWithStatus: GetMoveWithStatus[F],
       stones: Int
   ): F[Winner] = {
     val getMove = (player: Player, max: Max) =>
-      getMoveAndUpdate(state => update(player, max, state))
+      getMoveAndUpdate(state => getMoveWithStatus(player, max, state))
     play[StateT[F, Int, ?]](getMove, stones).runA(stones)
   }
 
@@ -65,10 +65,10 @@ object Nim {
       normal: F[Option[A]],
       error: F[Option[A]]
   ): F[A] = {
-    type Request = F[Option[A]]
-    val tryAndThenSetError: StateT[F, Request, Option[A]] =
-      StateT[F, Request, Option[A]](f => f.map(o => (error, o)))
-    retry[StateT[F, Request, ?], A](tryAndThenSetError).runA(normal)
+    type FState[X] = StateT[F, F[Option[A]], X]
+    val tryAndThenSetError: FState[Option[A]] =
+      StateT(f => f.map(o => (error, o)))
+    retry[FState, A](tryAndThenSetError).runA(normal)
   }
 
   val startString = "how many stones do you wish to play with?"
@@ -97,8 +97,6 @@ object Nim {
 
   def playIO(stones: Int): IO[Winner] = playWithUpdates(getTurn, stones)
   val gameIO: IO[Unit] = getStartingStones >>= playIO >>= announceWinner
-  def main(args: Array[String]): Unit = {
-    gameIO.unsafeRunSync
-  }
+  def main(args: Array[String]): Unit = gameIO.unsafeRunSync
 
 }

@@ -1,4 +1,4 @@
-package nim.functional
+package nim.functional.simpler
 
 import cats._
 import cats.implicits._
@@ -24,33 +24,30 @@ object Nim {
 
   def maxStones(total: Int): Int = min(3, total)
 
-  def play[F[_]: Monad](getMove: GetMove[F], stones: Int): F[Winner] = {
-    def inner(player: Player): StateT[F, Int, Winner] =
+  def play[F[_]: Monad](getMove: GetMove[F], startingStones: Int): F[Winner] = {
+    def inner(player: Player, total: Int): F[Winner] =
       for {
-        _ <- getMoveAndUpdate(total => getMove(player, min(3, total)))
-        newTotal <- StateT.get[F, Int]
-        winner <- if (newTotal == 0) StateT.pure[F, Int, Winner](player)
-        else inner(nextPlayer(player))
+        move <- getMove(player, maxStones(total))
+        newTotal = total - move
+        winner <- if (newTotal == 0) Monad[F].pure(player)
+        else inner(nextPlayer(player), newTotal)
       } yield winner
-    inner(PlayerOne).runA(stones)
+    inner(PlayerOne, startingStones)
   }
 
-  def getMoveAndUpdate[F[_]: Monad](
-      f: Status => F[Move]
-  ): StateT[F, Int, Move] = StateT { state =>
-    f(state).map(move => (state - move, move))
-  }
   type Status = Int
 
   type GetMoveWithStatus[F[_]] = (Player, Status) => F[Move]
 
   def playWithUpdates[F[_]: Monad](
       getMoveWithStatus: GetMoveWithStatus[F],
-      stones: Int
+      startingStones: Int
   ): F[Winner] = {
-    val getMove = (player: Player, max: Max) =>
-      getMoveAndUpdate(state => getMoveWithStatus(player, state))
-    play[StateT[F, Int, ?]](getMove, stones).runA(stones)
+    val getMove = (player: Player, _: Max) =>
+      StateT[F, Int, Move] { state =>
+        getMoveWithStatus(player, state).map(move => (state - move, move))
+    }
+    play[StateT[F, Int, ?]](getMove, startingStones).runA(startingStones)
   }
 
   def retry[F[_]: Monad, A](fa: F[Option[A]]): F[A] = fa.flatMap {

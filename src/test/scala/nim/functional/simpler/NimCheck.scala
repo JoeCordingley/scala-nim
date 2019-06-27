@@ -1,20 +1,18 @@
-package nim.functional
+package nim.functional.simpler
 
 import org.scalacheck.Properties
 import org.scalacheck.Prop._
 import org.scalacheck.Gen
-import nim.functional.Nim._
+import nim.functional.simpler.Nim._
 import cats.data.WriterT
 import cats.data.State
-import cats.data.Chain
 import cats.implicits._
 import org.scalacheck.cats.implicits._
 import org.scalacheck.Arbitrary.arbitrary
 import org.scalacheck.Arbitrary
 import cats._
-import scala.math._
 
-object NimCheck extends Properties("Nim") {
+object NimCheck extends Properties("simpler.Nim") {
 
   type TestContext[A] = WriterT[Gen, List[Record], A]
 
@@ -105,7 +103,7 @@ object NimCheck extends Properties("Nim") {
   val updateWritten = (player: Player, state: Int) =>
     for {
       move <- WriterT.liftF[Gen, List[UpdateAndPlay], Move](
-        moveGen(min(3, state)))
+        moveGen(scala.math.min(3, state)))
       _ <- WriterT.tell[Gen, List[UpdateAndPlay]](
         List(UpdateAndPlay(state, move))
       )

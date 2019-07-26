@@ -15,7 +15,7 @@ object Nim {
   type Move = Int
   type Max = Int
   type GetMove[F[_]] = (Player, Max) => F[Move]
-  type Winner = Player
+  case class Winner(player: Player)
 
   val nextPlayer: Player => Player = {
     case PlayerOne => PlayerTwo
@@ -29,7 +29,7 @@ object Nim {
       for {
         move <- getMove(player, maxStones(total))
         newTotal = total - move
-        winner <- if (newTotal == 0) Monad[F].pure(player)
+        winner <- if (newTotal == 0) Monad[F].pure(Winner(player))
         else inner(nextPlayer(player), newTotal)
       } yield winner
     inner(PlayerOne, startingStones)
@@ -83,7 +83,7 @@ object Nim {
     print(errorString) *> read.map(parseStart)
   )
 
-  def winnerString(winner: Winner) = s"${playerString(winner)} wins!"
+  def winnerString(winner: Winner) = s"${playerString(winner.player)} wins!"
 
   val playerString: Player => String = {
     case PlayerOne => "Player one"

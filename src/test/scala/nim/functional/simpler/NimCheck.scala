@@ -95,9 +95,9 @@ object NimCheck extends Properties("simpler.Nim") {
   }
 
   property(
-    "play returns the last player to move as the player"
+    "play returns the last player to move as the winner"
   ) = forAllNoShrink(winnerAndLastMove) {
-    case (winner, lastToMove) => winner == lastToMove
+    case (winner, lastToMove) => winner.player == lastToMove
   }
 
   val updateWritten = (player: Player, state: Int) =>

@@ -6,12 +6,12 @@ object Nim {
   sealed trait Player
   case object PlayerOne extends Player
   case object PlayerTwo extends Player
-  type Winner = Player
+  case class Winner(player: Player)
 
   def main(args: Array[String]): Unit = {
     println("how many stones do you wish to play with?")
     val number = readLine().toInt
-    val winner = play(number, PlayerOne)
+    val winner = play(number, PlayerOne).player
     println(s"${playerString(winner)} is the winner!")
   }
 
@@ -22,7 +22,7 @@ object Nim {
     )
     val stones = readLine().toInt
     val newTotal = stonesLeft - stones
-    if (newTotal == 0) player else play(newTotal, nextPlayer(player))
+    if (newTotal == 0) Winner(player) else play(newTotal, nextPlayer(player))
   }
 
   val playerString: Player => String = {

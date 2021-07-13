@@ -29,17 +29,19 @@ object Nim {
       for {
         _ <- getMoveAndUpdate(total => getMove(player, min(3, total)))
         newTotal <- StateT.get[F, Int]
-        winner <- if (newTotal == 0) StateT.pure[F, Int, Winner](player)
-        else inner(nextPlayer(player))
+        winner <-
+          if (newTotal == 0) StateT.pure[F, Int, Winner](player)
+          else inner(nextPlayer(player))
       } yield winner
     inner(PlayerOne).runA(stones)
   }
 
   def getMoveAndUpdate[F[_]: Monad](
       f: Status => F[Move]
-  ): StateT[F, Int, Move] = StateT { state =>
-    f(state).map(move => (state - move, move))
-  }
+  ): StateT[F, Int, Move] =
+    StateT { state =>
+      f(state).map(move => (state - move, move))
+    }
   type Status = Int
 
   type GetMoveWithStatus[F[_]] = (Player, Status) => F[Move]
@@ -53,10 +55,11 @@ object Nim {
     play[StateT[F, Int, ?]](getMove, stones).runA(stones)
   }
 
-  def retry[F[_]: Monad, A](fa: F[Option[A]]): F[A] = fa.flatMap {
-    case None    => retry(fa)
-    case Some(a) => Monad[F].pure(a)
-  }
+  def retry[F[_]: Monad, A](fa: F[Option[A]]): F[A] =
+    fa.flatMap {
+      case None    => retry(fa)
+      case Some(a) => Monad[F].pure(a)
+    }
 
   def retryWithError[F[_]: Monad, A](
       normal: F[Option[A]],

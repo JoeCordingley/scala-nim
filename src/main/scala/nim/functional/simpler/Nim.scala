@@ -29,8 +29,9 @@ object Nim {
       for {
         move <- getMove(player, maxStones(total))
         newTotal = total - move
-        winner <- if (newTotal == 0) Monad[F].pure(player)
-        else inner(nextPlayer(player), newTotal)
+        winner <-
+          if (newTotal == 0) Monad[F].pure(player)
+          else inner(nextPlayer(player), newTotal)
       } yield winner
     inner(PlayerOne, startingStones)
   }
@@ -46,14 +47,15 @@ object Nim {
     val getMove = (player: Player, _: Max) =>
       StateT[F, Int, Move] { state =>
         getMoveWithStatus(player, state).map(move => (state - move, move))
-    }
+      }
     play[StateT[F, Int, ?]](getMove, startingStones).runA(startingStones)
   }
 
-  def retry[F[_]: Monad, A](fa: F[Option[A]]): F[A] = fa.flatMap {
-    case None    => retry(fa)
-    case Some(a) => Monad[F].pure(a)
-  }
+  def retry[F[_]: Monad, A](fa: F[Option[A]]): F[A] =
+    fa.flatMap {
+      case None    => retry(fa)
+      case Some(a) => Monad[F].pure(a)
+    }
 
   def retryWithError[F[_]: Monad, A](
       normal: F[Option[A]],

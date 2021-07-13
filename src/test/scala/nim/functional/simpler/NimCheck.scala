@@ -77,7 +77,8 @@ object NimCheck extends Properties("simpler.Nim") {
     val (movesBefore, thisMove :: _) =
       recordedGame.records.splitAt(moveNumber - 1)
     val numberOfStonesTakenThusFar = movesBefore.map(_.move).sum
-    val numberOfStonesLeft = recordedGame.numberOfStones - numberOfStonesTakenThusFar
+    val numberOfStonesLeft =
+      recordedGame.numberOfStones - numberOfStonesTakenThusFar
     (thisMove.maxStones, numberOfStonesLeft)
   }
 
@@ -103,7 +104,8 @@ object NimCheck extends Properties("simpler.Nim") {
   val updateWritten = (player: Player, state: Int) =>
     for {
       move <- WriterT.liftF[Gen, List[UpdateAndPlay], Move](
-        moveGen(scala.math.min(3, state)))
+        moveGen(scala.math.min(3, state))
+      )
       _ <- WriterT.tell[Gen, List[UpdateAndPlay]](
         List(UpdateAndPlay(state, move))
       )
@@ -116,7 +118,8 @@ object NimCheck extends Properties("simpler.Nim") {
 
   val statefulGen: Gen[(NumberOfStartingStones, List[UpdateAndPlay])] = for {
     stones <- Gen.choose(1, 100)
-    updatesAndPlays <- playWithUpdates[NewTestContext](updateWritten, stones).written
+    updatesAndPlays <-
+      playWithUpdates[NewTestContext](updateWritten, stones).written
   } yield (stones, updatesAndPlays)
 
   val expectedTotalAndGiven: Gen[(Int, Int)] = for {
